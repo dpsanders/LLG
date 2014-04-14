@@ -305,7 +305,9 @@ function findOpenPaths!(L, mirrors) #, mirror_types, paths)
 
 	end
 
-	println("# num open paths: ", path_number - 1)
+	num_open_paths = path_number - 1
+
+	println("# num open paths: ", num_open_paths)
 	#println("# lengths: ", OO_lengths')
 	println("# total open length: ", total_open_length)
 	println("# open length fraction: ", total_open_length / (2*L*L))
@@ -320,17 +322,17 @@ function findOpenPaths!(L, mirrors) #, mirror_types, paths)
 	# end
 
 
-	println("# Num OC = ", length(mirror_list))
+	println("# num_OC = ", length(mirror_list))
 
 
 
-	return mirror_list, path_number, total_open_length
+	return mirror_list, path_number, total_open_length, num_open_paths, num_OO
 
 end
 
 
 # function findClosedPaths!(L, mirrors, mirror_types, paths, OC_mirror_list, path_number)
-function findClosedPaths!(L, mirrors, OC_mirror_list, path_number, delta_index)
+function findClosedPathsTouchingOpen!(L, mirrors, OC_mirror_list, path_number, delta_index)
 
 
 	println("\n# Finding closed touching open paths")
@@ -475,23 +477,26 @@ function findClosedPaths!(L, mirrors, OC_mirror_list, path_number, delta_index)
 
 	end
 
+	num_closed_paths_touching_open = path_number - initial_path_number
+	total_closed_length_touching_open = total_closed_length
 
-	println("# num closed paths touching open ones: ", path_number - initial_path_number)
+	println("# num closed paths touching open ones: ", num_closed_paths_touching_open)
 	# println("# closed lengths: ", CC_lengths')
-	println("# total closed length touching open: ", total_closed_length)
+	println("# total closed length touching open: ", total_closed_length_touching_open)
 	
 	# println("# num_CC_same: ", num_CC_same)
 	# println("# num_CC_distinct: ", num_CC_distinct)
 
-	println("num CC: ", num_CC)
+	println("# num CC: ", num_CC)
 
-	return CC_mirror_list, path_number, total_closed_length
+	return CC_mirror_list, path_number, total_closed_length_touching_open, 
+				num_closed_paths_touching_open, num_CC
 
 end
 
 
 #function findClosedClosedPaths!(L, mirrors, mirror_types, paths, CC_mirror_list, path_number)
-function findClosedClosedPaths!(L, mirrors	, CC_mirror_list, path_number, delta_index)
+function findEmbeddedClosedPaths!(L, mirrors, CC_mirror_list, path_number, delta_index)
 
 
 	println("\n# Finding closed closed paths")
@@ -645,14 +650,15 @@ function findClosedClosedPaths!(L, mirrors	, CC_mirror_list, path_number, delta_
 
 	end
 
+	num_embedded_closed_paths = path_number - initial_path_number
 
-	println("# num closed closed paths: ", path_number - initial_path_number)
+	println("# num closed closed paths: ", num_embedded_closed_paths)
 	# println("# closed lengths: ", CC_lengths')
 	println("# total closed closed length: ", total_closed_length)
 	# println("# num_CC_same: ", num_CC_same)
 	# println("# num_CC_distinct: ", num_CC_distinct)
-	println("num CC: ", num_CC)
-	return total_closed_length
+	println("# num_CC_2: ", num_CC)
+	return num_embedded_closed_paths, total_closed_length, num_CC
 
 end
 
@@ -665,6 +671,7 @@ function run_LLG(L)
 	# (mirrors, mirror_types, paths) = initialise(L_small)
 	# mirror_list = findOpenPaths!(L_small, mirrors, mirror_types, paths)
 
+	println()
 	println("# L = ", L)
 
 	@time begin
@@ -676,7 +683,8 @@ function run_LLG(L)
 
 	@time begin
 		#OC_mirror_list, path_number, total_open_length = findOpenPaths!(L, mirrors, mirror_types, paths)
-		OC_mirror_list, path_number, total_open_length = findOpenPaths!(L, mirrors)
+		OC_mirror_list, path_number, total_open_length, 
+		num_open_paths, num_OO  = findOpenPaths!(L, mirrors)
 		
 		#print(mirror_list)
 	end
@@ -694,9 +702,10 @@ function run_LLG(L)
 	@time begin
 		# print_mirrors(mirrors)
 		# println(mirrors'[end:-1:1, :])
-		CC_mirror_list, path_number, total_closed_open_length = 
-			# findClosedPaths!(L, mirrors, mirror_types, paths, OC_mirror_list, path_number)
-		findClosedPaths!(L, mirrors, OC_mirror_list, path_number, delta_index)
+		CC_mirror_list, path_number, total_closed_length_touching_open, 
+			num_closed_paths_touching_open, num_CC_1 = 
+			findClosedPathsTouchingOpen!(L, mirrors, OC_mirror_list, 
+											path_number, delta_index)
 
 	end
 
@@ -705,13 +714,14 @@ function run_LLG(L)
 
 	@time begin
 		#total_closed_closed_length = findClosedClosedPaths!(L, mirrors, mirror_types, paths, CC_mirror_list, path_number)
-		total_closed_closed_length = findClosedClosedPaths!(L, mirrors, CC_mirror_list, path_number, delta_index)
+		num_embedded_closed_paths, total_closed_closed_length, num_CC_2 = 
+		findEmbeddedClosedPaths!(L, mirrors, CC_mirror_list, path_number, delta_index)
 
 	end
 
 
 	total_length = total_open_length +
-		 total_closed_open_length + total_closed_closed_length
+		 total_closed_length_touching_open + total_closed_closed_length
 	println("\n# Total length: ", total_length)
 	println("# Expected: ", 2*L*L)
 	println("# Difference: ", 2*L*L - total_length)
@@ -722,6 +732,8 @@ end
 
 if length(ARGS) > 0
 	L = int(ARGS[1])
-	run_LLG(L)
+	run_LLG(10)
+	
+	@time run_LLG(L)
 end
 
